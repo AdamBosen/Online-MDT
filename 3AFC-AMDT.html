@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>3 Alternative Forced Choice Amplitude Modulation Detection Task</title>
+		<script src="jspsych-6.1/jspsych.js"></script>
+		<script src="jspsych-6.1/plugins/jspsych-audio-keyboard-response.js"></script>
+		<script src="jspsych-6.1/plugins/jspsych-html-button-response.js"></script>
+		<script src="jspsych-6.1/plugins/jspsych-html-keyboard-response.js"></script>
+		<link href="jspsych-6.1/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+
+		<meta charset="UTF-8">
+	</head>
+	<body></body>
+	<script>
+
+		//Each stimulus prompt/response button will have its own fixed location on the screen
+		//to facilitate the use of spatial mapping to remember each sound
+		sound1Style= "font-size:64px;position:fixed; left:35vw; top: 30vh;transform: translate(-50%, 50%)";
+		sound2Style= "font-size:64px;position:fixed; left:50vw; top: 30vh;transform: translate(-50%, 50%)";
+		sound3Style= "font-size:64px;position:fixed; left:65vw; top: 30vh;transform: translate(-50%, 50%)";
+
+		var experimentTimeline = [];
+
+		//Initialize the audio controller
+		var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+		//Define varibles to hold the auditory stimuli
+		let sound1;
+		let sound2;
+		let sound3;
+
+		//Define which sound will be modulated in each interval
+		let modulatedSound;
+		//This is a useful variable to carry forward the correct/incorrect result from the button response to the feedback interval
+		let responseCorrect;
+
+		const STIM_DURATION = 0.4; //seconds
+		const ISI_DURATION = 0.4; //seconds
+		const MOD_DEPTH = -6; //dB
+		const MOD_FREQ = 100; //Hz
+
+		for(loopIndex = 0;loopIndex < 5; loopIndex++)
+		{
+			var prepStimuli = {
+				type: 'html-button-response',
+				stimulus: "",
+				choices: ['Start Trial ' + (loopIndex+1)],
+				on_start: function() {
+					//Choose which sound will be modulated
+					modulatedSound = Math.floor(Math.random() * 3)+1;
+					//Init an audio buffer for each sound
+					var buffer1 = audioCtx.createBuffer(1, audioCtx.sampleRate * STIM_DURATION, audioCtx.sampleRate);
+					var buffer2 = audioCtx.createBuffer(1, audioCtx.sampleRate * STIM_DURATION, audioCtx.sampleRate);
+					var buffer3 = audioCtx.createBuffer(1, audioCtx.sampleRate * STIM_DURATION, audioCtx.sampleRate);
+					var bufferArray1 = buffer1.getChannelData(0);
+					var bufferArray2 = buffer2.getChannelData(0);
+					var bufferArray3 = buffer3.getChannelData(0);
+					//Fill the buffers with stuff
+					for(bufferIndex = 0; bufferIndex < buffer1.length; bufferIndex++)
+					{
+						//This definition places the peak of the modulation at the same peak as the unmodulated signal, which
+						//may not be desirable depending on how much changes in perceived loudness will affect performance.
+						//Consider roving the level of each burst to diminish the usefulness of loudness changes
+						//Also consider adding sin^2 on/off ramps to smooth the abrupt on/off transitions
+						var carrierAmplitude = (Math.pow(10,MOD_DEPTH/20) * Math.sin(2*Math.PI * bufferIndex / (audioCtx.sampleRate/MOD_FREQ)) / 2) + (1 - Math.pow(10,MOD_DEPTH/20)/2);
+						if(modulatedSound == 1)
+						{
+							bufferArray1[bufferIndex] = carrierAmplitude * 0.6 * (Math.random() * 2 - 1);
+						} else {
+							bufferArray1[bufferIndex] = 0.6 * (Math.random() * 2 - 1);
+						}
+						if(modulatedSound == 2)
+						{
+							bufferArray2[bufferIndex] = carrierAmplitude * 0.6 * (Math.random() * 2 - 1);
+						} else {
+							bufferArray2[bufferIndex] = 0.6 * (Math.random() * 2 - 1);
+						}
+						if(modulatedSound == 3)
+						{
+							bufferArray3[bufferIndex] = carrierAmplitude * 0.6 * (Math.random() * 2 - 1);
+						} else {
+							bufferArray3[bufferIndex] = 0.6 * (Math.random() * 2 - 1);
+						}
+					}
+					sound1 = audioCtx.createBufferSource();
+					sound1.buffer = buffer1;
+					sound1.connect(audioCtx.destination);
+					sound2 = audioCtx.createBufferSource();
+					sound2.buffer = buffer2;
+					sound2.connect(audioCtx.destination);
+					sound3 = audioCtx.createBufferSource();
+					sound3.buffer = buffer3;
+					sound3.connect(audioCtx.destination);
+				}
+			}
+
+			var playSound1 = {
+				type: 'audio-keyboard-response',
+				stimulus: "",
+				choices: jsPsych.NO_KEYS,
+				prompt: '<p style="' + sound1Style + '">1</p>',
+				trial_duration: STIM_DURATION * 1000,
+				response_ends_trial: false,
+				on_start: function() {
+					sound1.start();
+				}
+			}
+
+			var playSound2 = {
+				type: 'audio-keyboard-response',
+				stimulus: "",
+				choices: jsPsych.NO_KEYS,
+				prompt: '<p style="' + sound2Style + '">2</p>',
+				trial_duration: STIM_DURATION * 1000,
+				response_ends_trial: false,
+				on_start: function() {
+					sound2.start();
+				}
+			}
+
+			var playSound3 = {
+				type: 'audio-keyboard-response',
+				stimulus: "",
+				choices: jsPsych.NO_KEYS,
+				prompt: '<p style="' + sound3Style + '">3</p>',
+				trial_duration: STIM_DURATION * 1000,
+				response_ends_trial: false,
+				on_start: function() {
+					sound3.start();
+				}
+			}
+
+			var ISI = {
+				type: 'audio-keyboard-response',
+				stimulus: "",
+				choices: jsPsych.NO_KEYS,
+				prompt: [],
+				trial_duration: ISI_DURATION * 1000,
+				response_ends_trial: false
+			}
+
+			var giveResponse = {
+				type: 'html-button-response',
+				stimulus: "",
+				choices: ['1', '2', '3'],
+				button_html: [  '<button class="jspsych-btn" style = "' + sound1Style + '">%choice%</button>', 
+						'<button class="jspsych-btn" style = "' + sound2Style + '">%choice%</button>', 
+						'<button class="jspsych-btn" style = "' + sound3Style + '">%choice%</button>'],
+				on_finish: function(data) {
+					//button pressed is zero indexed, but for clarity the response buttons are indexed from 1,
+					//so we add one to button_pressed to match the response button labels
+					responseCorrect = modulatedSound == (+data.button_pressed+1);
+				}
+			}
+
+			var giveFeedback = {
+				type: 'html-keyboard-response',
+				stimulus: "",
+				choices: jsPsych.NO_KEYS,
+				trial_duration: 1000,
+				response_ends_trial: false,
+				on_start: function(trial) {
+					if(responseCorrect)
+					{
+						trial.stimulus = '<p style = "color:green;font-size:48px">Correct</p>';
+					} else {
+						trial.stimulus = '<p style = "color:red;font-size:48px">Incorrect</p>';
+					}
+					if(modulatedSound == 1) {
+						trial.prompt = '<p style="' + sound1Style + ';color:green">1</p>';
+					} else if(modulatedSound == 2) {
+						trial.prompt = '<p style="' + sound2Style + ';color:green">2</p>';
+					} else if(modulatedSound == 3) {
+						trial.prompt  = '<p style="' + sound3Style + ';color:green">3</p>';
+					}
+				}
+			}
+
+			experimentTimeline.push(prepStimuli,playSound1,ISI,playSound2,ISI,playSound3,giveResponse,giveFeedback);
+		}
+
+
+		jsPsych.init({
+			timeline: experimentTimeline
+		});
+
+	</script>
+</html>
