@@ -53,6 +53,8 @@
 		var currentReversal = 0; //index into STEP_SIZE
 		var currentModDepth = 0; //dB
 
+		var previousTrialAtThisDepthCorrect = 0; //This is needed to implement the 2 down part of the adaptive staircase
+
 
 		var prepStimuli = {
 			type: 'html-button-response',
@@ -200,8 +202,14 @@
 				//for currentDirection, 0 is descending, 1 is ascending
 				if(currentDirection == 0) {
 					if(responseCorrect) {
-						//TODO this is current 1 down 1 up, make 2 down
-						currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
+						//We only adapt downward if we get two trials correct in a row,
+						//Otherwise we just give credit and have them try again.
+						if(previousTrialAtThisDepthCorrect) {
+							currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
+							previousTrialAtThisDepthCorrect = 0;
+						} else {
+							previousTrialAtThisDepthCorrect = 1;
+						}
 					} else {
 						//We were descending, but now are ascending,
 						//which is a reversal
@@ -209,18 +217,25 @@
 						currentReversal = currentReversal + 1;
 						currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
 						currentDirection = 1;
+						previousTrialAtThisDepthCorrect = 0;
 					}
 					
 				} else {
 					if(responseCorrect) {
-						//we were ascending, but are now descending
-						//TODO this is 1 down 1 up, fix
-						reversalDepth[currentReversal] = currentModDepth;
-						currentReversal = currentReversal + 1;
-						currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
-						currentDirection = 0;
+						if(previousTrialAtThisDepthCorrect) {
+							//we were ascending, but are now descending
+							//TODO this is 1 down 1 up, fix
+							reversalDepth[currentReversal] = currentModDepth;
+							currentReversal = currentReversal + 1;
+							currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
+							currentDirection = 0;
+							previousTrialAtThisDepthCorrect = 0;
+						} else {
+							previousTrialAtThisDepthCorrect = 1;
+						}
 					} else {
-						currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH); 
+						currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
+						previousTrialAtThisDepthCorrect = 0;
 					}
 
 				} 
