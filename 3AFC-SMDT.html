@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>3 Alternative Forced Choice Amplitude Modulation Detection Task</title>
+		<script src="fft.js"></script>
+		<script src="jspsych-6.1/jspsych.js"></script>
+		<script src="jspsych-6.1/plugins/jspsych-audio-keyboard-response.js"></script>
+		<script src="jspsych-6.1/plugins/jspsych-html-button-response.js"></script>
+		<script src="jspsych-6.1/plugins/jspsych-html-keyboard-response.js"></script>
+		<link href="jspsych-6.1/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+
+		<meta charset="UTF-8">
+	</head>
+	<body></body>
+	<script>
+
+		//Each stimulus prompt/response button will have its own fixed location on the screen
+		//to facilitate the use of spatial mapping to remember each sound
+		const sound1Style= "font-size:64px;position:fixed; left:35vw; top: 25vh;transform: translate(-50%, 50%)";
+		const sound2Style= "font-size:64px;position:fixed; left:50vw; top: 25vh;transform: translate(-50%, 50%)";
+		const sound3Style= "font-size:64px;position:fixed; left:65vw; top: 25vh;transform: translate(-50%, 50%)";
+		const experimentEndStyle = '"text-align:center;font-size:24px;position:fixed; left:50vw; top: 50vh;transform: translate(-50%, -50%)"';
+
+		let experimentTimeline = [];
+
+		//Initialize the audio controller
+		let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+		const SAMPLE_RATE = 40960; //chosen so that the stimulus length is 16384 samples, or 2^14, which speeds up execution
+		const STIM_DURATION = 0.4; //seconds
+		const STIMULUS_LENGTH = SAMPLE_RATE * STIM_DURATION;
+		const ISI_DURATION = 0.4; //seconds
+		const LOWER_CUTOFF = 350; //Hz
+		const UPPER_CUTOFF = 5600; //Hz
+		//The amplitude is a rectangle
+		//Outside of these boundaries the signal is all zeros
+		const ONSET_SPECTRUM_SAMPLE = LOWER_CUTOFF / (SAMPLE_RATE / 2) * (STIMULUS_LENGTH / 2);
+		const OFFSET_SPECTRUM_SAMPLE = UPPER_CUTOFF / (SAMPLE_RATE /2) * (STIMULUS_LENGTH /2);
+
+		const TARGET_RMS = 0.035;//-29.12 dB, which is the RMS level of the PRESTO calibration file
+
+		const RAMP_SAMPLE_LENGTH = 410; //samples, chosen to be about 0.01 s with this sample rate
+		const MOD_FREQ = 0.5; //Ripples Per Octave 
+		const MAX_DEPTH = 40; //dB
+
+		const STEP_SIZE = [4,4,4,4,1,1,1,1,1]; //in dB, advances after every reversal and stops at the end of the array
+
+		const N_REVERSALS_TO_AVERAGE = 4; //Averages only the last reversals, to avoid the coarse adapation region
+
+
+		//Define variables to hold the auditory stimuli
+		let sound1;
+		let sound2;
+		let sound3;
+
+		//Define variable to hold the gain applied to each interval
+		//There is probably some refactoring that could be done to
+		//gather all of the stimulus information for each interval into
+		//a single object, but for now this works.
+		let levelRoveArray;
+
+		//Define which sound will be modulated in each interval
+		let modulatedSound;
+		//This is a useful variable to carry forward the correct/incorrect result from the button response to the feedback interval
+		let responseCorrect;
+
+
+		let reversalDepth = Array(STEP_SIZE.length-1);  //Store the reversal thresholds
+
+		let trialModDepth = Array();
+		let trialNumber = 0;
+
+		let currentDirection = 0; //0 is descending, 1 is ascending
+		let currentReversal = 0; //index into STEP_SIZE
+		let currentModDepth = 40; //dB
+
+		let previousTrialAtThisDepthCorrect = 0; //This is needed to implement the 2 down part of the adaptive staircase
+
+		function makeStimulus(targetBuffer,levelRove,modDepth) { 
+			if(targetBuffer === undefined) {
+				return 'Target Buffer not provided';
+			}
+			if(levelRove === undefined) {
+				levelRove = 0;
+			}
+
+			let realSegment = Array(OFFSET_SPECTRUM_SAMPLE - ONSET_SPECTRUM_SAMPLE);
+			let imaginarySegment = Array(OFFSET_SPECTRUM_SAMPLE - ONSET_SPECTRUM_SAMPLE);
+			for(let pointIndex = 0; pointIndex < realSegment.length; pointIndex++) {
+				//Phase is random noise
+				const randomPhase = 2*Math.PI*Math.random();
+				//Assumes the magnitude is 1.
+				if(pointIndex > ONSET_SPECTRUM_SAMPLE || pointIndex < OFFSET_SPECTRUM_SAMPLE) {
+					if(modDepth != undefined) {
+						let pointFreq = (pointIndex * (SAMPLE_RATE / 2) / (STIMULUS_LENGTH / 2)) + LOWER_CUTOFF;
+						//We use a phase of -pi/2 to ensure minimum energy at the edges, no sharp discontinuity in the spectrum
+						amplitude = Math.pow(10,(modDepth/2) * Math.sin((2*Math.PI*Math.log2(pointFreq/LOWER_CUTOFF)*MOD_FREQ)-Math.PI/2) / 20);
+					} else {
+						amplitude = 1;
+					}
+				}
+				realSegment[pointIndex] = amplitude*Math.cos(randomPhase);
+				imaginarySegment[pointIndex] = amplitude*Math.sin(randomPhase);
+
+			}
+
+			//Don't bother generating random noise for regions with no amplitude
+			let realSignal = Array(ONSET_SPECTRUM_SAMPLE).fill(0).concat(
+				realSegment.concat(
+				Array(STIMULUS_LENGTH/2 - OFFSET_SPECTRUM_SAMPLE -1).fill(0)));
+			let imaginarySignal = Array(ONSET_SPECTRUM_SAMPLE).fill(0).concat(
+				imaginarySegment.concat(
+				Array(STIMULUS_LENGTH/2 - OFFSET_SPECTRUM_SAMPLE - 1).fill(0))); 
+			//Mirror and concatenate the amplitude and phase spectra to produce a real signal
+			mirrorReal = [...realSignal];
+			mirrorReal.reverse();
+			//This odd structure is to handle the DC component (at 0) and the symmetry point (at N/2)
+			realSignal = Array(1).fill(0).concat(
+					realSignal.concat(
+					Array(1).fill(0).concat(
+					mirrorReal)));
+
+			mirrorImaginary = [...imaginarySignal];
+			mirrorImaginary.reverse();
+			//The map call multiplies each element of the mirrored portion by -1 to obtain Hermitian Symmetry
+			imaginarySignal = Array(1).fill(0).concat(
+						imaginarySignal.concat(
+						Array(1).fill(0).concat(
+						mirrorImaginary.map(currentValue => -1*currentValue))));
+
+			//Take the ifft of the spectrum
+			//This transformation is in place, which is why there is no output array.
+			//If you are messing around with the code above a nice check is that after
+			//the inverse transform imaginarySignal should be near-zero if the spectrum 
+			//was defined with proper symmetry
+			inverseTransform(realSignal,imaginarySignal);
+
+			//Adjust the gain of realSignal so the rms level matches the target level, which
+			//is defined in advanced based on our calibration signal
+			let squares = realSignal.map(value => value*value);
+			let sum = squares.reduce((total, value) => (total + value));
+			realSignalRMS = Math.sqrt(sum/realSignal.length);
+			//LevelRove is defined in dB, if it's nonzero we will need to include it in gain
+			if(levelRove == 0) {
+				gain = TARGET_RMS/realSignalRMS;
+			} else {
+				gain = Math.pow(10,levelRove/20) * TARGET_RMS/realSignalRMS;
+			}
+			realSignal = realSignal.map(currentValue => gain * currentValue);
+
+			//At this point, realSignal is in the time domain, so we apply the onset/offset ramp
+			//and amplitude modulation
+			for (let pointIndex = 0; pointIndex < realSignal.length; pointIndex ++){
+				let signalValue = realSignal[pointIndex];
+				//Apply onset/offset ramps
+				if(pointIndex < RAMP_SAMPLE_LENGTH) {
+					const rampAmplitude = Math.pow(Math.sin(Math.PI/2 * pointIndex/RAMP_SAMPLE_LENGTH),2);
+					signalValue *= rampAmplitude;
+				} else if (pointIndex > (realSignal.length - RAMP_SAMPLE_LENGTH)) {
+					const rampAmplitude = Math.pow(Math.sin(Math.PI/2 * (realSignal.length - pointIndex)/RAMP_SAMPLE_LENGTH),2);
+					signalValue *= rampAmplitude;
+				}
+				//Write into the buffer provided as the first argument
+				targetBuffer[pointIndex] = signalValue; 
+			}
+		}
+
+
+		let prepStimuli = {
+			type: 'html-button-response',
+			stimulus: "",
+			choices: ['Start Trial'],
+			on_start: function() {
+				//Log the modulation depth for this trial
+				trialModDepth[trialNumber] = currentModDepth;
+
+				//Choose which sound will be modulated
+				modulatedSound = Math.floor(Math.random() * 3)+1;
+				
+				levelRoveArray = Array(3);
+				for(let i = 0; i < levelRoveArray.length; i++) {
+					levelRoveArray[i] = (Math.random() * 6) - 3;
+				}
+
+				//Init an audio buffer for each sound
+				var buffer1 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
+				var buffer2 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
+				var buffer3 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
+				var bufferArray1 = buffer1.getChannelData(0);
+				var bufferArray2 = buffer2.getChannelData(0);
+				var bufferArray3 = buffer3.getChannelData(0);
+				//Fill the buffers with stuff
+				if(modulatedSound == 1) {
+					makeStimulus(bufferArray1,levelRoveArray[0],currentModDepth);
+				} else {
+					makeStimulus(bufferArray1,levelRoveArray[0]);
+				}
+				if(modulatedSound == 2) {
+					makeStimulus(bufferArray2,levelRoveArray[1],currentModDepth);
+				} else {
+					makeStimulus(bufferArray2,levelRoveArray[1]);
+				}
+				if(modulatedSound == 3) {
+					makeStimulus(bufferArray3,levelRoveArray[2],currentModDepth);
+				} else {
+					makeStimulus(bufferArray3,levelRoveArray[2]);
+				}
+
+				sound1 = audioCtx.createBufferSource();
+				sound1.buffer = buffer1;
+				sound1.connect(audioCtx.destination);
+				sound2 = audioCtx.createBufferSource();
+				sound2.buffer = buffer2;
+				sound2.connect(audioCtx.destination);
+				sound3 = audioCtx.createBufferSource();
+				sound3.buffer = buffer3;
+				sound3.connect(audioCtx.destination);
+			}
+		}
+
+		let playSound1 = {
+			type: 'audio-keyboard-response',
+			stimulus: "",
+			choices: jsPsych.NO_KEYS,
+			prompt: '<p style="' + sound1Style + '">1</p>',
+			trial_duration: STIM_DURATION * 1000,
+			response_ends_trial: false,
+			on_start: function() {
+				sound1.start();
+			}
+		}
+
+		let playSound2 = {
+			type: 'audio-keyboard-response',
+			stimulus: "",
+			choices: jsPsych.NO_KEYS,
+			prompt: '<p style="' + sound2Style + '">2</p>',
+			trial_duration: STIM_DURATION * 1000,
+			response_ends_trial: false,
+			on_start: function() {
+				sound2.start();
+			}
+		}
+
+		let playSound3 = {
+			type: 'audio-keyboard-response',
+			stimulus: "",
+			choices: jsPsych.NO_KEYS,
+			prompt: '<p style="' + sound3Style + '">3</p>',
+			trial_duration: STIM_DURATION * 1000,
+			response_ends_trial: false,
+			on_start: function() {
+				sound3.start();
+			}
+		}
+
+		let ISI = {
+			type: 'audio-keyboard-response',
+			stimulus: "",
+			choices: jsPsych.NO_KEYS,
+			prompt: [],
+			trial_duration: ISI_DURATION * 1000,
+			response_ends_trial: false
+		}
+
+		let giveResponse = {
+			type: 'html-button-response',
+			stimulus: "",
+			choices: ['1', '2', '3'],
+			button_html: [  '<button class="jspsych-btn" style = "' + sound1Style + '">%choice%</button>', 
+					'<button class="jspsych-btn" style = "' + sound2Style + '">%choice%</button>', 
+					'<button class="jspsych-btn" style = "' + sound3Style + '">%choice%</button>'],
+			on_finish: function(data) {
+				//button pressed is zero indexed, but for clarity the response buttons are indexed from 1,
+				//so we add one to button_pressed to match the response button labels
+				responseCorrect = modulatedSound == (+data.button_pressed+1);
+			}
+		}
+
+		let giveFeedback = {
+			type: 'html-keyboard-response',
+			stimulus: "",
+			choices: jsPsych.NO_KEYS,
+			trial_duration: 1000,
+			response_ends_trial: false,
+			on_start: function(trial) {
+				if(responseCorrect)
+				{
+					trial.stimulus = '<p style = "color:green;font-size:48px">Correct</p>';
+				} else {
+					trial.stimulus = '<p style = "color:red;font-size:48px">Incorrect</p>';
+				}
+				if(modulatedSound == 1) {
+					trial.prompt = '<p style="' + sound1Style + ';color:green">1</p>';
+				} else if(modulatedSound == 2) {
+					trial.prompt = '<p style="' + sound2Style + ';color:green">2</p>';
+				} else if(modulatedSound == 3) {
+					trial.prompt  = '<p style="' + sound3Style + ';color:green">3</p>';
+				}
+			}
+		}
+
+		let trialNode = {
+			timeline: [prepStimuli,playSound1,ISI,playSound2,ISI,playSound3,giveResponse,giveFeedback],
+			loop_function: function(data){
+				//Log data for this trial
+				jsPsych.data.get().addToLast({trialNumber:trialNumber,
+								targetInterval:modulatedSound,
+								responseCorrect:responseCorrect,
+								modDepth:currentModDepth,
+								levelRove:levelRoveArray,
+								reversals:[...reversalDepth]});
+
+				//for currentDirection, 0 is descending, 1 is ascending
+				if(currentDirection == 0) {
+					if(responseCorrect) {
+						//We only adapt downward if we get two trials correct in a row,
+						//Otherwise we just give credit and have them try again.
+						if(previousTrialAtThisDepthCorrect) {
+							currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
+							previousTrialAtThisDepthCorrect = 0;
+						} else {
+							previousTrialAtThisDepthCorrect = 1;
+						}
+					} else {
+						//We were descending, but now are ascending,
+						//which is a reversal
+						reversalDepth[currentReversal] = currentModDepth;
+						currentReversal += 1;
+						currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
+						currentDirection = 1;
+						previousTrialAtThisDepthCorrect = 0;
+					}
+					
+				} else {
+					if(responseCorrect) {
+						if(previousTrialAtThisDepthCorrect) {
+							//we were ascending, but are now descending
+							reversalDepth[currentReversal] = currentModDepth;
+							currentReversal += 1;
+							currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
+							currentDirection = 0;
+							previousTrialAtThisDepthCorrect = 0;
+						} else {
+							previousTrialAtThisDepthCorrect = 1;
+						}
+					} else {
+						currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
+						previousTrialAtThisDepthCorrect = 0;
+					}
+
+				} 
+
+
+				//If we've passed the total number of reversals exit, otherwise loop
+				if(currentReversal >= STEP_SIZE.length-1)
+				{
+					//Log final data
+					jsPsych.data.get().addToLast({reversals:[...reversalDepth]});
+					return false;
+				} else {
+					trialNumber = trialNumber + 1;
+					return true;
+				}
+
+			}
+
+		}
+
+		experimentTimeline.push(trialNode);
+
+		jsPsych.init({
+			timeline: experimentTimeline,
+			on_finish: function() {
+			  averageReversalDepth = reversalDepth.slice(reversalDepth.length - N_REVERSALS_TO_AVERAGE,reversalDepth.length).reduce((total,value) => (total + value))/N_REVERSALS_TO_AVERAGE;
+				document.querySelector('body').innerHTML = '<p style = ' + experimentEndStyle + '>Your final threshold was ' + averageReversalDepth + ' dB.<br>You can close this window.</p>';
+			}
+		});
+
+	</script>
+</html>
