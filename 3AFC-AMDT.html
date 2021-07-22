@@ -24,6 +24,16 @@
 
 		let experimentTimeline = [];
 
+
+		var enterSubjectID = {
+			type: 'survey-text',
+			questions:[{prompt: "Please enter your participant ID", name: 'SubjectID'}],
+			button_label: 'Log in'
+		}
+
+		experimentTimeline.push(enterSubjectID);
+
+
 		//Initialize the audio controller
 		let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
@@ -38,7 +48,7 @@
 		const ONSET_SPECTRUM_SAMPLE = LOWER_CUTOFF / (SAMPLE_RATE / 2) * (STIMULUS_LENGTH / 2);
 		const OFFSET_SPECTRUM_SAMPLE = UPPER_CUTOFF / (SAMPLE_RATE /2) * (STIMULUS_LENGTH /2);
 
-		const TARGET_RMS = 0.035;//-29.12 dB, which is the RMS level of the PRESTO calibration file
+		const TARGET_RMS = 0.0416;//-27.61 dB, which is the RMS level of the PRESTO calibration file
 
 		const RAMP_SAMPLE_LENGTH = 410; //samples, chosen to be about 0.01 s with this sample rate
 		const MOD_FREQ = 100; //Hz 
@@ -192,9 +202,9 @@
 
 		let instructions = {
 			type: 'instructions',
-			pages: ['<br>You will hear three sounds.<br>One will sound different.<br>Click on the one that sounds different.', 
-				'<br><br>Click these examples to hear the difference.<br>During the experiment, pick the one that sounds different.' + DEMO_FILLER1_BUTTON + DEMO_TARGET_BUTTON + DEMO_FILLER2_BUTTON,
-				'<br>The difference will get harder to hear.<br>It is okay to guess.<br>Click Next to begin.'
+			pages: ['<br><br><br>You will hear three sounds.<br>One will sound different.<br>Click on the one that sounds different.', 
+				'<br><br><br><br>Click these examples to hear the difference.<br>During the experiment, pick the one that sounds different.' + DEMO_FILLER1_BUTTON + DEMO_TARGET_BUTTON + DEMO_FILLER2_BUTTON,
+				'<br><br><br>The difference will get harder to hear.<br>It is okay to guess.<br>Click Next to begin.'
 				],
 			show_clickable_nav: true
 		}
