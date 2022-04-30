@@ -8,20 +8,14 @@
 		<script src="jspsych-6.1/plugins/jspsych-audio-keyboard-response.js"></script>
 		<script src="jspsych-6.1/plugins/jspsych-html-button-response.js"></script>
 		<script src="jspsych-6.1/plugins/jspsych-html-keyboard-response.js"></script>
+		<script src="jspsych-6.1/plugins/jspsych-survey-text.js"></script>
 		<link href="jspsych-6.1/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+		<link href="css/3AFC.css" rel="stylesheet" type="text/css"></link>
 
 		<meta charset="UTF-8">
 	</head>
 	<body></body>
 	<script>
-
-		//Each stimulus prompt/response button will have its own fixed location on the screen
-		//to facilitate the use of spatial mapping to remember each sound
-		const sound1Style= "font-size:64px;position:fixed; left:35vw; top: 25vh;transform: translate(-50%, 50%)";
-		const sound2Style= "font-size:64px;position:fixed; left:50vw; top: 25vh;transform: translate(-50%, 50%)";
-		const sound3Style= "font-size:64px;position:fixed; left:65vw; top: 25vh;transform: translate(-50%, 50%)";
-		const experimentEndStyle = '"text-align:center;font-size:24px;position:fixed; left:50vw; top: 50vh;transform: translate(-50%, -50%)"';
-
 		let experimentTimeline = [];
 
 
@@ -199,9 +193,9 @@
 			fillerDemoSound.start();
 		}
 
-		const DEMO_FILLER1_BUTTON ='<input type="button" id="FillerDemo" value="Same" style = "' + sound1Style + ';color:red" class=jspsych-btn onclick="playFillerDemo();">';
-		const DEMO_TARGET_BUTTON ='<input type="button" id="TargetDemo" value="Diff." style = "' + sound2Style + ';color:green" class=jspsych-btn onclick="playTargetDemo();">';
-		const DEMO_FILLER2_BUTTON ='<input type="button" id="FillerDemo" value="Same" style = "' + sound3Style + ';color:red" class=jspsych-btn onclick="playFillerDemo();">';
+		const DEMO_FILLER1_BUTTON ='<input type="button" id="FillerDemo" value="Same" class="soundButton sound1 incorrect" onclick="playFillerDemo();">';
+		const DEMO_TARGET_BUTTON ='<input type="button" id="TargetDemo" value="Diff." class="soundButton sound2 correct" onclick="playTargetDemo();">';
+		const DEMO_FILLER2_BUTTON ='<input type="button" id="FillerDemo" value="Same" class="soundButton sound3 incorrect" onclick="playFillerDemo();">';
 
 		let instructions = {
 			type: 'instructions',
@@ -270,7 +264,7 @@
 			type: 'audio-keyboard-response',
 			stimulus: "",
 			choices: jsPsych.NO_KEYS,
-			prompt: '<p style="' + sound1Style + '">1</p>',
+			prompt: '<p class="soundButton sound1">1</p>',
 			trial_duration: STIM_DURATION * 1000,
 			response_ends_trial: false,
 			on_start: function() {
@@ -282,7 +276,7 @@
 			type: 'audio-keyboard-response',
 			stimulus: "",
 			choices: jsPsych.NO_KEYS,
-			prompt: '<p style="' + sound2Style + '">2</p>',
+			prompt: '<p class="soundButton sound2">2</p>',
 			trial_duration: STIM_DURATION * 1000,
 			response_ends_trial: false,
 			on_start: function() {
@@ -294,7 +288,7 @@
 			type: 'audio-keyboard-response',
 			stimulus: "",
 			choices: jsPsych.NO_KEYS,
-			prompt: '<p style="' + sound3Style + '">3</p>',
+			prompt: '<p class="soundButton sound3">3</p>',
 			trial_duration: STIM_DURATION * 1000,
 			response_ends_trial: false,
 			on_start: function() {
@@ -315,9 +309,9 @@
 			type: 'html-button-response',
 			stimulus: "",
 			choices: ['1', '2', '3'],
-			button_html: [  '<button class="jspsych-btn" style = "' + sound1Style + '">%choice%</button>', 
-					'<button class="jspsych-btn" style = "' + sound2Style + '">%choice%</button>', 
-					'<button class="jspsych-btn" style = "' + sound3Style + '">%choice%</button>'],
+			button_html: [  '<button class="soundButton sound1">%choice%</button>', 
+					'<button class="soundButton sound2">%choice%</button>', 
+					'<button class="soundButton sound3">%choice%</button>'],
 			on_finish: function(data) {
 				//button pressed is zero indexed, but for clarity the response buttons are indexed from 1,
 				//so we add one to button_pressed to match the response button labels
@@ -334,16 +328,16 @@
 			on_start: function(trial) {
 				if(responseCorrect)
 				{
-					trial.stimulus = '<p style = "color:green;font-size:48px">Correct</p>';
+					trial.stimulus = '<h1><p class="correct">Correct</p></h1>';
 				} else {
-					trial.stimulus = '<p style = "color:red;font-size:48px">Incorrect</p>';
+					trial.stimulus = '<h1><p class="incorrect">Incorrect</p></h1>';
 				}
 				if(modulatedSound == 1) {
-					trial.prompt = '<p style="' + sound1Style + ';color:green">1</p>';
+					trial.prompt = '<p class="soundButton sound1">1</p>';
 				} else if(modulatedSound == 2) {
-					trial.prompt = '<p style="' + sound2Style + ';color:green">2</p>';
+					trial.prompt = '<p class="soundButton sound2">2</p>';
 				} else if(modulatedSound == 3) {
-					trial.prompt  = '<p style="' + sound3Style + ';color:green">3</p>';
+					trial.prompt = '<p class="soundButton sound3">3</p>';
 				}
 			}
 		}
@@ -421,7 +415,7 @@
 			timeline: experimentTimeline,
 			on_finish: function() {
 			  averageReversalDepth = reversalDepth.slice(reversalDepth.length - N_REVERSALS_TO_AVERAGE,reversalDepth.length).reduce((total,value) => (total + value))/N_REVERSALS_TO_AVERAGE;
-				document.querySelector('body').innerHTML = '<p style = ' + experimentEndStyle + '>Your final threshold was ' + averageReversalDepth + ' dB.<br>You can close this window.</p>';
+				document.querySelector('body').innerHTML = '<p class="experimentEnd">Your final threshold was ' + averageReversalDepth + ' dB.<br>You can close this window.</p>';
 			}
 		});
 

@@ -1,0 +1,48 @@
+.experimentEnd{
+	text-align : center;
+	font-size : 24px;
+	position : fixed;
+	left : 50vw;
+	top : 50vh;
+	transform : translate(-50%, -50%);
+}
+
+.jspsych-display-element {
+	font-family: 'Open Sans', 'Arial', sans-serif;
+	font-size: 20px;
+	line-height: 1.6em;
+}
+
+button#jspsych-instructions-next, button#jspsych-instructions-back, .jspsych-btn {
+	color: black;
+	border: 1px solid black;
+	background: #EEE;
+	font-size: 20px;
+}
+
+.soundButton{
+	font-size : 64px;
+	position : fixed;
+	top : 25vh;
+	transform : translate(-50%, 50%);
+}
+
+.sound1{
+	left : 35vw;
+}
+
+.sound2{
+	left : 50vw;
+}
+
+.sound3{
+	left : 65vw;
+}
+
+.correct{
+	color : green;
+}
+
+.incorrect{
+	color : red;
+}
