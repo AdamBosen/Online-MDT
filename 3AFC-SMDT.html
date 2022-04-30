@@ -3,29 +3,33 @@
 	<head>
 		<title>3 Alternative Forced Choice Spectral Modulation Detection Task</title>
 		<script src="fft.js"></script>
-		<script src="jspsych-6.1/jspsych.js"></script>
-		<script src="jspsych-6.1/plugins/jspsych-instructions.js"></script>
-		<script src="jspsych-6.1/plugins/jspsych-audio-keyboard-response.js"></script>
-		<script src="jspsych-6.1/plugins/jspsych-html-button-response.js"></script>
-		<script src="jspsych-6.1/plugins/jspsych-html-keyboard-response.js"></script>
-		<script src="jspsych-6.1/plugins/jspsych-survey-text.js"></script>
-		<link href="jspsych-6.1/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+		<script src="jspsych-7.2.1-dist/jspsych.js"></script>
+		<script src="jspsych-7.2.1-dist/plugin-instructions.js"></script>
+		<script src="jspsych-7.2.1-dist/plugin-audio-keyboard-response.js"></script>
+		<script src="jspsych-7.2.1-dist/plugin-html-button-response.js"></script>
+		<script src="jspsych-7.2.1-dist/plugin-html-keyboard-response.js"></script>
+		<script src="jspsych-7.2.1-dist/plugin-survey-text.js"></script>
+		<link href="jspsych-7.2.1-dist/jspsych.css" rel="stylesheet" type="text/css"></link>
 		<link href="css/3AFC.css" rel="stylesheet" type="text/css"></link>
 
 		<meta charset="UTF-8">
 	</head>
 	<body></body>
 	<script>
-		let experimentTimeline = [];
+		let timeline = [];
 
+		var jsPsych = initJsPsych({
+			on_finish: function() {
+			}
+		});
 
 		var enterSubjectID = {
-			type: 'survey-text',
+			type: jsPsychSurveyText,
 			questions:[{prompt: "Please enter your participant ID", name: 'SubjectID'}],
 			button_label: 'Log in'
 		}
 
-		experimentTimeline.push(enterSubjectID);
+		timeline.push(enterSubjectID);
 
 
 		//Initialize the audio controller
@@ -198,7 +202,7 @@
 		const DEMO_FILLER2_BUTTON ='<input type="button" id="FillerDemo" value="Same" class="soundButton sound3 incorrect" onclick="playFillerDemo();">';
 
 		let instructions = {
-			type: 'instructions',
+			type: jsPsychInstructions,
 			pages: ['<br><br><br>You will hear three sounds.<br>One will sound different.<br>Click on the one that sounds different.', 
 				'<br><br><br><br>Click these examples to hear the difference.<br>During the experiment, pick the one that sounds different.' + DEMO_FILLER1_BUTTON + DEMO_TARGET_BUTTON + DEMO_FILLER2_BUTTON,
 				'<br><br><br>The difference will get harder to hear.<br>It is okay to guess.<br>Click Next to begin.'
@@ -206,10 +210,10 @@
 			show_clickable_nav: true
 		}
 
-		experimentTimeline.push(instructions);
+		timeline.push(instructions);
 
 		let prepStimuli = {
-			type: 'html-button-response',
+			type: jsPsychHtmlButtonResponse,
 			stimulus: "",
 			choices: ['Start Trial'],
 			on_start: function() {
@@ -261,10 +265,9 @@
 		}
 
 		let playSound1 = {
-			type: 'audio-keyboard-response',
-			stimulus: "",
-			choices: jsPsych.NO_KEYS,
-			prompt: '<p class="soundButton sound1">1</p>',
+			type: jsPsychHtmlKeyboardResponse,
+			stimulus: '<p class="soundButton sound1">1</p>',
+			choices: "NO_KEYS",
 			trial_duration: STIM_DURATION * 1000,
 			response_ends_trial: false,
 			on_start: function() {
@@ -273,10 +276,9 @@
 		}
 
 		let playSound2 = {
-			type: 'audio-keyboard-response',
-			stimulus: "",
-			choices: jsPsych.NO_KEYS,
-			prompt: '<p class="soundButton sound2">2</p>',
+			type: jsPsychHtmlKeyboardResponse,
+			stimulus: '<p class="soundButton sound2">2</p>',
+			choices: "NO_KEYS",
 			trial_duration: STIM_DURATION * 1000,
 			response_ends_trial: false,
 			on_start: function() {
@@ -285,10 +287,9 @@
 		}
 
 		let playSound3 = {
-			type: 'audio-keyboard-response',
-			stimulus: "",
-			choices: jsPsych.NO_KEYS,
-			prompt: '<p class="soundButton sound3">3</p>',
+			type: jsPsychHtmlKeyboardResponse,
+			stimulus: '<p class="soundButton sound3">3</p>',
+			choices: "NO_KEYS",
 			trial_duration: STIM_DURATION * 1000,
 			response_ends_trial: false,
 			on_start: function() {
@@ -297,16 +298,15 @@
 		}
 
 		let ISI = {
-			type: 'audio-keyboard-response',
+			type: jsPsychHtmlKeyboardResponse,
 			stimulus: "",
-			choices: jsPsych.NO_KEYS,
-			prompt: [],
+			choices: "NO_KEYS",
 			trial_duration: ISI_DURATION * 1000,
 			response_ends_trial: false
 		}
 
 		let giveResponse = {
-			type: 'html-button-response',
+			type: jsPsychHtmlButtonResponse,
 			stimulus: "",
 			choices: ['1', '2', '3'],
 			button_html: [  '<button class="soundButton sound1">%choice%</button>', 
@@ -315,14 +315,14 @@
 			on_finish: function(data) {
 				//button pressed is zero indexed, but for clarity the response buttons are indexed from 1,
 				//so we add one to button_pressed to match the response button labels
-				responseCorrect = modulatedSound == (+data.button_pressed+1);
+				responseCorrect = modulatedSound == (+data.response+1);
 			}
 		}
 
 		let giveFeedback = {
-			type: 'html-keyboard-response',
+			type: jsPsychHtmlKeyboardResponse,
 			stimulus: "",
-			choices: jsPsych.NO_KEYS,
+			choices: "NO_KEYS",
 			trial_duration: 1000,
 			response_ends_trial: false,
 			on_start: function(trial) {
@@ -409,15 +409,21 @@
 
 		}
 
-		experimentTimeline.push(trialNode);
+		timeline.push(trialNode);
 
-		jsPsych.init({
-			timeline: experimentTimeline,
-			on_finish: function() {
-			  averageReversalDepth = reversalDepth.slice(reversalDepth.length - N_REVERSALS_TO_AVERAGE,reversalDepth.length).reduce((total,value) => (total + value))/N_REVERSALS_TO_AVERAGE;
-				document.querySelector('body').innerHTML = '<p class="experimentEnd">Your final threshold was ' + averageReversalDepth + ' dB.<br>You can close this window.</p>';
-			}
-		});
+		var endText = {
+			on_start: function(trial) {
+				averageReversalDepth = reversalDepth.slice(reversalDepth.length - N_REVERSALS_TO_AVERAGE,reversalDepth.length).reduce((total,value) => (total + value))/N_REVERSALS_TO_AVERAGE;
+				trial.stimulus = '<p class="experimentEnd">Your final threshold was ' + averageReversalDepth + ' dB.</p>';
+			},
+			type: jsPsychHtmlButtonResponse,
+			stimulus:'',
+			choices:['Click to move on']
+		}
+
+		timeline.push(endText);
+
+		jsPsych.run(timeline);
 
 	</script>
 </html>
