@@ -2,6 +2,7 @@
 <html>
 	<head>
 		<title>3 Alternative Forced Choice Spectral Modulation Detection Task</title>
+		<script src="jatos.js"></script>
 		<script src="fft.js"></script>
 		<script src="jspsych-7.2.1-dist/jspsych.js"></script>
 		<script src="jspsych-7.2.1-dist/plugin-instructions.js"></script>
@@ -20,16 +21,13 @@
 
 		var jsPsych = initJsPsych({
 			on_finish: function() {
+				if(jatos.studySessionData.nRunsRemaining>1) {
+					jatos.studySessionData.nRunsRemaining = jatos.studySessionData.nRunsRemaining-1;
+					jatos.startComponentByPos(2);
+				} else
+					jatos.endStudy();
 			}
 		});
-
-		var enterSubjectID = {
-			type: jsPsychSurveyText,
-			questions:[{prompt: "Please enter your participant ID", name: 'SubjectID'}],
-			button_label: 'Log in'
-		}
-
-		timeline.push(enterSubjectID);
 
 
 		//Initialize the audio controller
@@ -201,229 +199,252 @@
 		const DEMO_TARGET_BUTTON ='<input type="button" id="TargetDemo" value="Diff." class="soundButton sound2 correct" onclick="playTargetDemo();">';
 		const DEMO_FILLER2_BUTTON ='<input type="button" id="FillerDemo" value="Same" class="soundButton sound3 incorrect" onclick="playFillerDemo();">';
 
-		let instructions = {
-			type: jsPsychInstructions,
-			pages: ['<br><br><br>You will hear three sounds.<br>One will sound different.<br>Click on the one that sounds different.', 
-				'<br><br><br><br>Click these examples to hear the difference.<br>During the experiment, pick the one that sounds different.' + DEMO_FILLER1_BUTTON + DEMO_TARGET_BUTTON + DEMO_FILLER2_BUTTON,
-				'<br><br><br>The difference will get harder to hear.<br>It is okay to guess.<br>Click Next to begin.'
-				],
-			show_clickable_nav: true
-		}
 
-		timeline.push(instructions);
+		jatos.onLoad(() => {
 
-		let prepStimuli = {
-			type: jsPsychHtmlButtonResponse,
-			stimulus: "",
-			choices: ['Start Trial'],
-			on_start: function() {
-				//Log the modulation depth for this trial
-				trialModDepth[trialNumber] = currentModDepth;
-
-				//Choose which sound will be modulated
-				modulatedSound = Math.floor(Math.random() * 3)+1;
-				
-				levelRoveArray = Array(3);
-				for(let i = 0; i < levelRoveArray.length; i++) {
-					levelRoveArray[i] = (Math.random() * 6) - 3;
-				}
-
-				//Init an audio buffer for each sound
-				var buffer1 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
-				var buffer2 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
-				var buffer3 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
-				var bufferArray1 = buffer1.getChannelData(0);
-				var bufferArray2 = buffer2.getChannelData(0);
-				var bufferArray3 = buffer3.getChannelData(0);
-				//Fill the buffers with stuff
-				if(modulatedSound == 1) {
-					makeStimulus(bufferArray1,levelRoveArray[0],currentModDepth);
-				} else {
-					makeStimulus(bufferArray1,levelRoveArray[0]);
-				}
-				if(modulatedSound == 2) {
-					makeStimulus(bufferArray2,levelRoveArray[1],currentModDepth);
-				} else {
-					makeStimulus(bufferArray2,levelRoveArray[1]);
-				}
-				if(modulatedSound == 3) {
-					makeStimulus(bufferArray3,levelRoveArray[2],currentModDepth);
-				} else {
-					makeStimulus(bufferArray3,levelRoveArray[2]);
-				}
-
-				sound1 = audioCtx.createBufferSource();
-				sound1.buffer = buffer1;
-				sound1.connect(audioCtx.destination);
-				sound2 = audioCtx.createBufferSource();
-				sound2.buffer = buffer2;
-				sound2.connect(audioCtx.destination);
-				sound3 = audioCtx.createBufferSource();
-				sound3.buffer = buffer3;
-				sound3.connect(audioCtx.destination);
+			//For plural on 'run'
+			if(jatos.studySessionData.nRunsRemaining>1) {
+				nRunsRemainingText = 'You have ' + jatos.studySessionData.nRunsRemaining + ' runs to go for this task.';
+			} else {
+				nRunsRemainingText = 'You have ' + jatos.studySessionData.nRunsRemaining + ' run to go for this task.';
 			}
-		}
 
-		let playSound1 = {
-			type: jsPsychHtmlKeyboardResponse,
-			stimulus: '<p class="soundButton sound1">1</p>',
-			choices: "NO_KEYS",
-			trial_duration: STIM_DURATION * 1000,
-			response_ends_trial: false,
-			on_start: function() {
-				sound1.start();
+			let nRunsRemainingMessage = {
+				type: jsPsychInstructions,
+				pages: [nRunsRemainingText],
+				show_clickable_nav: true
 			}
-		}
+			timeline.push(nRunsRemainingMessage);
 
-		let playSound2 = {
-			type: jsPsychHtmlKeyboardResponse,
-			stimulus: '<p class="soundButton sound2">2</p>',
-			choices: "NO_KEYS",
-			trial_duration: STIM_DURATION * 1000,
-			response_ends_trial: false,
-			on_start: function() {
-				sound2.start();
+			let instructions = {
+				type: jsPsychInstructions,
+				pages: ['<br><br><br>You will hear three sounds.<br>One will sound different.<br>Click on the one that sounds different.', 
+					'<br><br><br><br>Click these examples to hear the difference.<br>During the experiment, pick the one that sounds different.' + DEMO_FILLER1_BUTTON + DEMO_TARGET_BUTTON + DEMO_FILLER2_BUTTON,
+					'<br><br><br>The difference will get harder to hear.<br>It is okay to guess.<br>Click Next to begin.'
+					],
+				show_clickable_nav: true
 			}
-		}
 
-		let playSound3 = {
-			type: jsPsychHtmlKeyboardResponse,
-			stimulus: '<p class="soundButton sound3">3</p>',
-			choices: "NO_KEYS",
-			trial_duration: STIM_DURATION * 1000,
-			response_ends_trial: false,
-			on_start: function() {
-				sound3.start();
-			}
-		}
+			timeline.push(instructions);
 
-		let ISI = {
-			type: jsPsychHtmlKeyboardResponse,
-			stimulus: "",
-			choices: "NO_KEYS",
-			trial_duration: ISI_DURATION * 1000,
-			response_ends_trial: false
-		}
+			let prepStimuli = {
+				type: jsPsychHtmlButtonResponse,
+				stimulus: "",
+				choices: ['Start Trial'],
+				on_start: function() {
+					//Log the modulation depth for this trial
+					trialModDepth[trialNumber] = currentModDepth;
 
-		let giveResponse = {
-			type: jsPsychHtmlButtonResponse,
-			stimulus: "",
-			choices: ['1', '2', '3'],
-			button_html: [  '<button class="soundButton sound1">%choice%</button>', 
-					'<button class="soundButton sound2">%choice%</button>', 
-					'<button class="soundButton sound3">%choice%</button>'],
-			on_finish: function(data) {
-				//button pressed is zero indexed, but for clarity the response buttons are indexed from 1,
-				//so we add one to button_pressed to match the response button labels
-				responseCorrect = modulatedSound == (+data.response+1);
-			}
-		}
-
-		let giveFeedback = {
-			type: jsPsychHtmlKeyboardResponse,
-			stimulus: "",
-			choices: "NO_KEYS",
-			trial_duration: 1000,
-			response_ends_trial: false,
-			on_start: function(trial) {
-				if(responseCorrect)
-				{
-					trial.stimulus = '<h1><p class="correct">Correct</p></h1>';
-				} else {
-					trial.stimulus = '<h1><p class="incorrect">Incorrect</p></h1>';
-				}
-				if(modulatedSound == 1) {
-					trial.prompt = '<p class="soundButton sound1">1</p>';
-				} else if(modulatedSound == 2) {
-					trial.prompt = '<p class="soundButton sound2">2</p>';
-				} else if(modulatedSound == 3) {
-					trial.prompt = '<p class="soundButton sound3">3</p>';
-				}
-			}
-		}
-
-		let trialNode = {
-			timeline: [prepStimuli,playSound1,ISI,playSound2,ISI,playSound3,giveResponse,giveFeedback],
-			loop_function: function(data){
-				//Log data for this trial
-				jsPsych.data.get().addToLast({trialNumber:trialNumber,
-								targetInterval:modulatedSound,
-								responseCorrect:responseCorrect,
-								modDepth:currentModDepth,
-								levelRove:levelRoveArray,
-								reversals:[...reversalDepth]});
-
-				//for currentDirection, 0 is descending, 1 is ascending
-				if(currentDirection == 0) {
-					if(responseCorrect) {
-						//We only adapt downward if we get two trials correct in a row,
-						//Otherwise we just give credit and have them try again.
-						if(previousTrialAtThisDepthCorrect) {
-							currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
-							previousTrialAtThisDepthCorrect = 0;
-						} else {
-							previousTrialAtThisDepthCorrect = 1;
-						}
-					} else {
-						//We were descending, but now are ascending,
-						//which is a reversal
-						reversalDepth[currentReversal] = currentModDepth;
-						currentReversal += 1;
-						currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
-						currentDirection = 1;
-						previousTrialAtThisDepthCorrect = 0;
-					}
+					//Choose which sound will be modulated
+					modulatedSound = Math.floor(Math.random() * 3)+1;
 					
-				} else {
-					if(responseCorrect) {
-						if(previousTrialAtThisDepthCorrect) {
-							//we were ascending, but are now descending
+					levelRoveArray = Array(3);
+					for(let i = 0; i < levelRoveArray.length; i++) {
+						levelRoveArray[i] = (Math.random() * 6) - 3;
+					}
+
+					//Init an audio buffer for each sound
+					var buffer1 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
+					var buffer2 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
+					var buffer3 = audioCtx.createBuffer(1, STIMULUS_LENGTH, SAMPLE_RATE);
+					var bufferArray1 = buffer1.getChannelData(0);
+					var bufferArray2 = buffer2.getChannelData(0);
+					var bufferArray3 = buffer3.getChannelData(0);
+					//Fill the buffers with stuff
+					if(modulatedSound == 1) {
+						makeStimulus(bufferArray1,levelRoveArray[0],currentModDepth);
+					} else {
+						makeStimulus(bufferArray1,levelRoveArray[0]);
+					}
+					if(modulatedSound == 2) {
+						makeStimulus(bufferArray2,levelRoveArray[1],currentModDepth);
+					} else {
+						makeStimulus(bufferArray2,levelRoveArray[1]);
+					}
+					if(modulatedSound == 3) {
+						makeStimulus(bufferArray3,levelRoveArray[2],currentModDepth);
+					} else {
+						makeStimulus(bufferArray3,levelRoveArray[2]);
+					}
+
+					sound1 = audioCtx.createBufferSource();
+					sound1.buffer = buffer1;
+					sound1.connect(audioCtx.destination);
+					sound2 = audioCtx.createBufferSource();
+					sound2.buffer = buffer2;
+					sound2.connect(audioCtx.destination);
+					sound3 = audioCtx.createBufferSource();
+					sound3.buffer = buffer3;
+					sound3.connect(audioCtx.destination);
+				}
+			}
+
+			let playSound1 = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: '<p class="soundButton sound1">1</p>',
+				choices: "NO_KEYS",
+				trial_duration: STIM_DURATION * 1000,
+				response_ends_trial: false,
+				on_start: function() {
+					sound1.start();
+				}
+			}
+
+			let playSound2 = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: '<p class="soundButton sound2">2</p>',
+				choices: "NO_KEYS",
+				trial_duration: STIM_DURATION * 1000,
+				response_ends_trial: false,
+				on_start: function() {
+					sound2.start();
+				}
+			}
+
+			let playSound3 = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: '<p class="soundButton sound3">3</p>',
+				choices: "NO_KEYS",
+				trial_duration: STIM_DURATION * 1000,
+				response_ends_trial: false,
+				on_start: function() {
+					sound3.start();
+				}
+			}
+
+			let ISI = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: "",
+				choices: "NO_KEYS",
+				trial_duration: ISI_DURATION * 1000,
+				response_ends_trial: false
+			}
+
+			let giveResponse = {
+				type: jsPsychHtmlButtonResponse,
+				stimulus: "",
+				choices: ['1', '2', '3'],
+				button_html: [  '<button class="soundButton sound1">%choice%</button>', 
+						'<button class="soundButton sound2">%choice%</button>', 
+						'<button class="soundButton sound3">%choice%</button>'],
+				on_finish: function(data) {
+					//button pressed is zero indexed, but for clarity the response buttons are indexed from 1,
+					//so we add one to button_pressed to match the response button labels
+					responseCorrect = modulatedSound == (+data.response+1);
+				}
+			}
+
+			let giveFeedback = {
+				type: jsPsychHtmlKeyboardResponse,
+				stimulus: "",
+				choices: "NO_KEYS",
+				trial_duration: 1000,
+				response_ends_trial: false,
+				on_start: function(trial) {
+					if(responseCorrect)
+					{
+						trial.stimulus = '<h1><p class="correct">Correct</p></h1>';
+					} else {
+						trial.stimulus = '<h1><p class="incorrect">Incorrect</p></h1>';
+					}
+					if(modulatedSound == 1) {
+						trial.prompt = '<p class="soundButton sound1">1</p>';
+					} else if(modulatedSound == 2) {
+						trial.prompt = '<p class="soundButton sound2">2</p>';
+					} else if(modulatedSound == 3) {
+						trial.prompt = '<p class="soundButton sound3">3</p>';
+					}
+				}
+			}
+
+			let trialNode = {
+				timeline: [prepStimuli,playSound1,ISI,playSound2,ISI,playSound3,giveResponse,giveFeedback],
+				loop_function: function(data){
+					//Log data for this trial
+					jsPsych.data.get().addToLast({  subjectID:jatos.studySessionData.SubjectID,
+									nRunsRemaining:jatos.studySessionData.nRunsRemaining,
+									trialNumber:trialNumber,
+									targetInterval:modulatedSound,
+									responseCorrect:responseCorrect,
+									modDepth:currentModDepth,
+									levelRove:levelRoveArray,
+									reversals:[...reversalDepth]});
+
+					jatos.appendResultData(jsPsych.data.get().last());
+
+					//for currentDirection, 0 is descending, 1 is ascending
+					if(currentDirection == 0) {
+						if(responseCorrect) {
+							//We only adapt downward if we get two trials correct in a row,
+							//Otherwise we just give credit and have them try again.
+							if(previousTrialAtThisDepthCorrect) {
+								currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
+								previousTrialAtThisDepthCorrect = 0;
+							} else {
+								previousTrialAtThisDepthCorrect = 1;
+							}
+						} else {
+							//We were descending, but now are ascending,
+							//which is a reversal
 							reversalDepth[currentReversal] = currentModDepth;
 							currentReversal += 1;
-							currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
-							currentDirection = 0;
+							currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
+							currentDirection = 1;
 							previousTrialAtThisDepthCorrect = 0;
-						} else {
-							previousTrialAtThisDepthCorrect = 1;
 						}
+						
 					} else {
-						currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
-						previousTrialAtThisDepthCorrect = 0;
+						if(responseCorrect) {
+							if(previousTrialAtThisDepthCorrect) {
+								//we were ascending, but are now descending
+								reversalDepth[currentReversal] = currentModDepth;
+								currentReversal += 1;
+								currentModDepth = currentModDepth - STEP_SIZE[currentReversal];
+								currentDirection = 0;
+								previousTrialAtThisDepthCorrect = 0;
+							} else {
+								previousTrialAtThisDepthCorrect = 1;
+							}
+						} else {
+							currentModDepth = Math.min(currentModDepth + STEP_SIZE[currentReversal],MAX_DEPTH);
+							previousTrialAtThisDepthCorrect = 0;
+						}
+
+					} 
+
+
+					//If we've passed the total number of reversals exit, otherwise loop
+					if(currentReversal >= STEP_SIZE.length-1)
+					{
+						//Log final data
+						jsPsych.data.get().addToLast({reversals:[...reversalDepth]});
+						jatos.appendResultData(jsPsych.data.get().last()); //This will log the last trial twice, but that's worth it to get the final reversal in the data
+						return false;
+					} else {
+						trialNumber = trialNumber + 1;
+						return true;
 					}
 
-				} 
-
-
-				//If we've passed the total number of reversals exit, otherwise loop
-				if(currentReversal >= STEP_SIZE.length-1)
-				{
-					//Log final data
-					jsPsych.data.get().addToLast({reversals:[...reversalDepth]});
-					return false;
-				} else {
-					trialNumber = trialNumber + 1;
-					return true;
 				}
 
 			}
 
-		}
+			timeline.push(trialNode);
 
-		timeline.push(trialNode);
+			var endText = {
+				on_start: function(trial) {
+					averageReversalDepth = reversalDepth.slice(reversalDepth.length - N_REVERSALS_TO_AVERAGE,reversalDepth.length).reduce((total,value) => (total + value))/N_REVERSALS_TO_AVERAGE;
+					trial.stimulus = '<p class="experimentEnd">Your final threshold was ' + averageReversalDepth + ' dB.</p>';
+				},
+				type: jsPsychHtmlButtonResponse,
+				stimulus:'',
+				choices:['Click to move on']
+			}
 
-		var endText = {
-			on_start: function(trial) {
-				averageReversalDepth = reversalDepth.slice(reversalDepth.length - N_REVERSALS_TO_AVERAGE,reversalDepth.length).reduce((total,value) => (total + value))/N_REVERSALS_TO_AVERAGE;
-				trial.stimulus = '<p class="experimentEnd">Your final threshold was ' + averageReversalDepth + ' dB.</p>';
-			},
-			type: jsPsychHtmlButtonResponse,
-			stimulus:'',
-			choices:['Click to move on']
-		}
+			timeline.push(endText);
 
-		timeline.push(endText);
-
-		jsPsych.run(timeline);
+			jsPsych.run(timeline);
+		})
 
 	</script>
 </html>
