@@ -202,19 +202,21 @@
 
 		jatos.onLoad(() => {
 
-			//For plural on 'run'
-			if(jatos.studySessionData.nRunsRemaining>1) {
-				nRunsRemainingText = 'You have ' + jatos.studySessionData.nRunsRemaining + ' runs to go for this task.';
-			} else {
-				nRunsRemainingText = 'You have ' + jatos.studySessionData.nRunsRemaining + ' run to go for this task.';
-			}
+			if(jatos.studySessionData.nRunsRemaining !== undefined) {
+				//For plural on 'run'
+				if(jatos.studySessionData.nRunsRemaining>1) {
+					nRunsRemainingText = 'You have ' + jatos.studySessionData.nRunsRemaining + ' runs to go for this task.';
+				} else {
+					nRunsRemainingText = 'You have ' + jatos.studySessionData.nRunsRemaining + ' run to go for this task.';
+				}
 
-			let nRunsRemainingMessage = {
-				type: jsPsychInstructions,
-				pages: [nRunsRemainingText],
-				show_clickable_nav: true
+				let nRunsRemainingMessage = {
+					type: jsPsychInstructions,
+					pages: [nRunsRemainingText],
+					show_clickable_nav: true
+				}
+				timeline.push(nRunsRemainingMessage);
 			}
-			timeline.push(nRunsRemainingMessage);
 
 			let instructions = {
 				type: jsPsychInstructions,
@@ -370,7 +372,7 @@
 									levelRove:levelRoveArray,
 									reversals:[...reversalDepth]});
 
-					jatos.appendResultData(jsPsych.data.get().last());
+					let continueTask;
 
 					//for currentDirection, 0 is descending, 1 is ascending
 					if(currentDirection == 0) {
@@ -418,20 +420,22 @@
 					{
 						//Log final data
 						jsPsych.data.get().addToLast({reversals:[...reversalDepth]});
-						jatos.appendResultData(jsPsych.data.get().last()); //This will log the last trial twice, but that's worth it to get the final reversal in the data
-						return false;
+						continueTask = false;
 					} else {
 						trialNumber = trialNumber + 1;
-						return true;
+						continueTask = true;
 					}
 
+					jatos.appendResultData(jsPsych.data.get().last());
+
+					return continueTask;
 				}
 
 			}
 
 			timeline.push(trialNode);
 
-			var endText = {
+			let endText = {
 				on_start: function(trial) {
 					averageReversalDepth = reversalDepth.slice(reversalDepth.length - N_REVERSALS_TO_AVERAGE,reversalDepth.length).reduce((total,value) => (total + value))/N_REVERSALS_TO_AVERAGE;
 					trial.stimulus = '<p class="experimentEnd">Your final threshold was ' + averageReversalDepth + ' dB.</p>';
