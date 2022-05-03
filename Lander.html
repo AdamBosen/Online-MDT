@@ -19,23 +19,25 @@
 		on_finish: function() {
 			jatos.submitResultData(jsPsych.data.get());
 			jatos.studySessionData.SubjectID = jsPsych.data.get().last().trials[0].response.SubjectID;
+
+			//The batch link defines the number of runs in the task.
+			//Participants usually do 3 runs, but if this number is undefined we'll just do one
+			if(jatos.batchJsonInput.nRuns === undefined) {
+				jatos.studySessionData.nRunsRemaining = 1;
+			} else {
+				jatos.studySessionData.nRunsRemaining = jatos.batchJsonInput.nRuns;
+			}
+
 			//Get the JSON input for the link that loaded this page to point to the correct component,
 			//Then build a queue of tasks to perform
 			if(jatos.batchJsonInput.task == 'SMDT') {
-				//The batch link defines the number of runs in the task.
-				//Participants usually do 3 runs, but if this number is undefined we'll just do one
-				//SMDT is component 2
-				if(jatos.batchJsonInput.nRuns === undefined) {
-					jatos.studySessionData.nRunsRemaining = 1;
-				} else {
-					jatos.studySessionData.nRunsRemaining = jatos.batchJsonInput.nRuns;
-				}
 				//SMDT is component 2
 				jatos.startComponentByPos(2);
 
 			}
 			else if(jatos.batchJsonInput.task == 'AMDT') {
 				//AMDT is component 3
+				jatos.startComponentByPos(3);
 			}
 			else {
 				//I'm not sure what task should be run
