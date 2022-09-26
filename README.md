@@ -1,9 +1,9 @@
 # Online-MDT
 Website built in javascript using the jsPsych library to dynamically generate a 3 alternative forced choice modulation detection task.
-A running example of the most recent version of this script can be found here: https://vrxfbjz4bn.cognition.run/
+A running example of the most recent version of this script can be found here: https://jatos.boystown.org/publix/kXuHqJ3yYmq
 
 This script requires:
-jsPsych 6.1, which can be downloaded here: https://github.com/jspsych/jsPsych/releases/tag/v6.1.0
+jsPsych 7.2.1, which can be downloaded here: https://github.com/jspsych/jsPsych/releases/tag/jspsych%407.2.1
 fft.js, which can be downloaded here: https://www.nayuki.io/res/free-small-fft-in-multiple-languages
 
 Once you have downloaded jsPsych 6.1, fft.js, and the 3AFC-AMDT.html and/or 3AFC-SMDT.html file, you can open the website in a web browser and it should bring up a prompt to initiate a trial.
