@@ -4,6 +4,7 @@ A running example of the most recent version of this script can be found here: h
 
 This script requires:
 jsPsych 7.2.1, which can be downloaded here: https://github.com/jspsych/jsPsych/releases/tag/jspsych%407.2.1
+
 fft.js, which can be downloaded here: https://www.nayuki.io/res/free-small-fft-in-multiple-languages
 
 Once you have downloaded jsPsych 6.1, fft.js, and the 3AFC-AMDT.html and/or 3AFC-SMDT.html file, you can open the website in a web browser and it should bring up a prompt to initiate a trial.
